@@ -1,104 +1,58 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
 
-# C extensions
-*.so
+# Created by https://www.gitignore.io/api/macos,windows
+# Edit at https://www.gitignore.io/?templates=macos,windows
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
+# Icon must end with two \r
+Icon
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# Thumbnails
+._*
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
-# Translations
-*.mo
-*.pot
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
+### Windows ###
+# Windows thumbnail cache files
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
 
-# Flask stuff:
-instance/
-.webassets-cache
+# Dump file
+*.stackdump
 
-# Scrapy stuff:
-.scrapy
+# Folder config file
+[Dd]esktop.ini
 
-# Sphinx documentation
-docs/_build/
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
 
-# PyBuilder
-target/
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Windows shortcuts
+*.lnk
 
-# pyenv
-.python-version
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
+# End of https://www.gitignore.io/api/macos,windows

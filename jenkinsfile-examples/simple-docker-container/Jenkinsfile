@@ -1,0 +1,68 @@
+pipeline {
+  agent {
+    node {
+      label 'linux&&docker'
+    }
+  }
+  environment {
+    AUTH = credentials('secrets')
+    APPLICATION_NAME = 'awesome-app'
+    VERSION = "0.1.0.${env.BUILD_NUMBER}"
+  }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+    timestamps()
+  }
+  stages {
+    stage('Prepare Environment') {
+      steps {
+        script {
+          // Setting the target to a default value.
+          env.DOCKER_TARGET = 'local'
+          // Setting the target to an actual container repo when building the master branch.
+          if(env.BRANCH_NAME == 'master') {
+            env.DOCKER_TARGET = 'docker-local-prod'
+          }
+          env.CONTAINER = "${env.DOCKER_TARGET}/${env.APPLICATION_NAME}:${env.VERSION}"
+          echo "Set container name to: ${env.CONTAINER}"
+        }
+      }
+    }
+    stage('Build Container') {
+      steps {
+        sh "docker build --tag ${env.CONTAINER} ."
+      }
+    }
+    stage('Publish Container') {
+      when {
+        branch 'master'
+      }
+      steps {
+        script {
+          docker.withRegistry('https://artifactory.company.com', 'secrets') {
+            def container = docker.image("${env.CONTAINER}")
+            container.push()
+            container.push('latest')
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      echo 'Cleaning up.'
+      cleanWs()
+      deleteDir()
+    }
+    success {
+      slackSend channel: '#builds',
+        color: 'good',
+        message: "*Build Succeeded* [${env.BUILD_NUMBER}] \n <${env.BUILD_URL}|${env.JOB_NAME}>"
+    }
+    failure {
+      slackSend channel: '#builds',
+        color: 'danger',
+        message: "*Build Failed* [${env.BUILD_NUMBER}] \n <${env.BUILD_URL}|${env.JOB_NAME}>"
+    }
+  }
+}
