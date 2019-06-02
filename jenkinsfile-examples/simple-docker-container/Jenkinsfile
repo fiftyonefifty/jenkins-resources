@@ -7,10 +7,12 @@ pipeline {
   environment {
     AUTH = credentials('secrets')
     APPLICATION_NAME = 'awesome-app'
-    VERSION = "0.1.0.${env.BUILD_NUMBER}"
+    VERSION = "0.1.0"
+    RT_DOCKER_PROD = 'docker-local-prod'
   }
   options {
     buildDiscarder(logRotator(numToKeepStr: '5'))
+    timeout(time: 1, unit: 'HOURS')
     timestamps()
   }
   stages {
@@ -18,10 +20,12 @@ pipeline {
       steps {
         script {
           // Setting the target to a default value.
-          env.DOCKER_TARGET = 'local'
+          if(env.BRANCH_NAME != 'master') {
+            env.DOCKER_TARGET = 'local'
+          }
           // Setting the target to an actual container repo when building the master branch.
           if(env.BRANCH_NAME == 'master') {
-            env.DOCKER_TARGET = 'docker-local-prod'
+            env.DOCKER_TARGET = "${env.RT_DOCKER_PROD}"
           }
           env.CONTAINER = "${env.DOCKER_TARGET}/${env.APPLICATION_NAME}:${env.VERSION}"
           echo "Set container name to: ${env.CONTAINER}"
@@ -30,13 +34,11 @@ pipeline {
     }
     stage('Build Container') {
       steps {
-        sh "docker build --tag ${env.CONTAINER} ."
+        sh "docker build --tag ${env.CONTAINER} -f build/Dockerfile ."
       }
     }
     stage('Publish Container') {
-      when {
-        branch 'master'
-      }
+      when { branch 'master' }
       steps {
         script {
           docker.withRegistry('https://artifactory.company.com', 'secrets') {
