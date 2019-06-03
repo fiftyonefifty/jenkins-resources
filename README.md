@@ -8,6 +8,7 @@ In addition to covering Jenkinsfiles and pipelines, these examples include:
 
 - Artifactory
 - Docker
+- Slack Integration
 
 ## Other Great Resources
 
