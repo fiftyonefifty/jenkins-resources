@@ -21,3 +21,4 @@ All the examples in this repo leverage the Declarative Syntax. Where needed, you
 
 - [Jenkins Pipeline Examples Github Repo](https://github.com/jenkinsci/pipeline-examples)
 - [JFrog Examples Github Repo](https://github.com/jfrog/project-examples)
+- [Jenkins Syntax Documentation](https://jenkins.io/doc/book/pipeline/syntax/)
