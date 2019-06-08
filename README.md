@@ -10,7 +10,9 @@ In addition to covering Jenkinsfiles and pipelines, these examples include:
 - Docker
 - Slack Integration
 
-## Examples
+## Jenkinsfile Examples
+
+All the examples in this repo leverage the Declarative Syntax. Where needed, you will see some script blocks which are also supported by declarative Jenkinsfiles.
 
 - [Simple Dockerized App](jenkinsfile-examples/simple-docker-container/)
 - [Angular NPM Library](jenkinsfile-examples/angular-npm-lib/)
