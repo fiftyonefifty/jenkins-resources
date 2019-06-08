@@ -11,7 +11,7 @@ Each example includes a README containing a brief description of the use case an
 In addition to covering Jenkinsfiles and pipelines, these examples include:
 
 - Artifactory
-- Bitbucket (GIT)
+- Bitbucket (Git)
 - Docker
 - Slack Integration
 
