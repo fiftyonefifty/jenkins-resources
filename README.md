@@ -13,6 +13,7 @@ In addition to covering Jenkinsfiles and pipelines, these examples include:
 ## Examples
 
 - [Simple Dockerized App](jenkinsfile-examples/simple-docker-container/)
+- [Angular NPM Library](jenkinsfile-examples/angular-npm-lib/)
 
 ## Other Great Resources
 
