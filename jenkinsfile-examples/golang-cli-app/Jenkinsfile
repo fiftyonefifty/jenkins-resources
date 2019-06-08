@@ -1,0 +1,250 @@
+import groovy.json.JsonBuilder
+import hudson.Util
+pipeline {
+  agent {
+    dockerfile {
+      dir 'build'
+      label 'linux&&docker'
+    }
+  }
+  // Global Environment Settings
+  environment {
+    APPLICATION_NAME = 'app-name'
+    AUTH = credentials('secret')
+    BITBUCKET_AUTH = credentials('bitbucket-api-credentials')
+    BITBUCKET_EMAIL = 'your_email@company.com'
+    RT_DEV_REPO = 'bin-local-dev'
+    RT_PROD_REPO = 'bin-local-prod'
+    PROJECT_URL = 'bitbucket.company.com/scm/proj-key/repo-name'
+    VERSION = "0.1.0-alpha+${env.BUILD_NUMBER}"
+    // Setting cache to a writable location. See https://issues.jenkins-ci.org/browse/JENKINS-51964
+    XDG_CACHE_HOME = '/tmp/.cache'
+  }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+  }
+  stages {
+    stage('Prepare Build Environment') {
+      steps {
+        echo 'Pulling Dependencies'
+        sh 'go version'
+        sh 'go mod download'
+        sh './scripts/goreleaser_download.sh'
+        sh 'chmod +x ./goreleaser'
+        sh 'make tools'
+      }
+    }
+    stage('Unit Test') {
+      steps {
+        sh 'make test-ci'
+      }
+      post {
+        always {
+          junit 'build/*.xml'
+        }
+      }
+    }
+    stage('Build layouts') {
+      steps {
+        echo 'Using goreleaser to build binaries, layouts, and packages. See http://goreleaser.com for more details.'
+        sh './goreleaser release --snapshot'
+      }
+    }
+    stage('Publish to Artifactory (Dev)') {
+      when {
+        branch 'dev'
+      }
+      steps {
+        rtBuildInfo (
+          // Build retention:
+          maxBuilds: 5,
+          deleteBuildArtifacts: true
+        )
+        rtUpload (
+          serverId: 'artifactory',
+          failNoOp: true,
+          spec: """{
+                  "files": [
+                    {
+                      "pattern": "dist/darwin_386/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/darwin_386/",
+                      "props": "type=bin;os=darwin;arch=386;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/darwin_amd64/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/darwin_amd64/",
+                      "props": "type=bin;os=darwin;arch=amd64;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_386/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_386/",
+                      "props": "type=bin;os=linux;arch=386;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_amd64/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_amd64/",
+                      "props": "type=bin;os=linux;arch=amd64;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_arm_6/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_arm_6/",
+                      "props": "type=bin;os=linux;arch=arm;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_arm64/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_arm64/",
+                      "props": "type=bin;os=linux;arch=arm64;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/windows_386/${env.APPLICATION_NAME}.*",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/windows_386/",
+                      "props": "type=bin;os=windows;arch=386;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/windows_amd64/${env.APPLICATION_NAME}.*",
+                      "target": "${env.RT_DEV_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/windows_amd64/",
+                      "props": "type=bin;os=windows;arch=amd64;version=${env.VERSION}"
+                    }
+                  ]
+                }"""
+        )
+        rtPublishBuildInfo (
+          serverId: 'artifactory'
+        )
+      }
+    }
+    stage('Publish to Artifactory (Prod)') {
+      when {
+        branch 'master'
+      }
+      steps {
+        rtBuildInfo (
+        )
+        rtUpload (
+          serverId: 'artifactory',
+          failNoOp: true,
+          spec: """{
+                  "files": [
+                    {
+                      "pattern": "dist/darwin_386/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/darwin_386/",
+                      "props": "type=bin;os=darwin;arch=386;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/darwin_amd64/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/darwin_amd64/",
+                      "props": "type=bin;os=darwin;arch=amd64;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_386/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_386/",
+                      "props": "type=bin;os=linux;arch=386;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_amd64/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_amd64/",
+                      "props": "type=bin;os=linux;arch=amd64;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_arm_6/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_arm_6/",
+                      "props": "type=bin;os=linux;arch=arm;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/linux_arm64/${env.APPLICATION_NAME}",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/linux_arm64/",
+                      "props": "type=bin;os=linux;arch=arm64;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/windows_386/${env.APPLICATION_NAME}.*",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/windows_386/",
+                      "props": "type=bin;os=windows;arch=386;version=${env.VERSION}"
+                    },
+                    {
+                      "pattern": "dist/windows_amd64/${env.APPLICATION_NAME}.*",
+                      "target": "${env.RT_PROD_REPO}/${env.APPLICATION_NAME}/${env.VERSION}/windows_amd64/",
+                      "props": "type=bin;os=windows;arch=amd64;version=${env.VERSION}"
+                    }
+                  ]
+                }"""
+        )
+        rtPublishBuildInfo (
+          serverId: 'artifactory'
+        )
+      }
+    }
+    stage('Finalize Build') {
+      when { branch 'master' }
+      steps {
+        echo 'Committing Tags'
+        sh "git config user.email '${env.BITBUCKET_EMAIL}'"
+        sh "git config user.name '${env.BITBUCKET_AUTH_USR}'"
+        sh "git tag -a ${env.VERSION} -m 'tagging'"
+        sh "git push 'https://${env.BITBUCKET_AUTH_USR}:${env.BITBUCKET_AUTH_PSW}@${env.PROJECT_URL}' --tags"
+      }
+    }
+  }
+  post {
+    cleanup {
+      // Cleaning up after ourselves
+      deleteDir()
+      cleanWs()
+    }
+    always {
+      // Sending a nice message to Slack
+      script {
+        if (currentBuild.currentResult == 'SUCCESS') {
+          color = 'good'
+          statusMessage = 'Woot! This build was a success! 🤘'
+          buttonStyle = 'primary'
+        }
+
+        if (currentBuild.currentResult == 'FAILURE') {
+          color = 'danger'
+          statusMessage = 'Aw Heck! The build is broken. ☠️'
+          buttonStyle = 'danger'
+        }
+
+        def attachmentPayload = [[
+          title: "${env.APPLICATION_NAME}, Build #${env.BUILD_NUMBER}",
+          title_link: "${env.BUILD_URL}",
+          color: "${color}",
+          author_name: 'Jenkins',
+          author_link: "${env.JENKINS_URL}",
+          text: "${statusMessage}",
+          fields: [
+            [
+              title: "Branch",
+              value: "${env.BRANCH_NAME}",
+              short: true
+            ],
+            [
+              title: 'Duration',
+              value: "${Util.getTimeSpanString(System.currentTimeMillis() - currentBuild.startTimeInMillis)}",
+              short: true
+            ]
+          ],
+          actions: [
+            [
+              name: 'Jenkins',
+              text: 'See build details',
+              type: 'button',
+              url: "${env.BUILD_URL}",
+              style: "${buttonStyle}"
+            ]
+          ],
+          footer: 'Jenkins'
+        ]]
+        env.MESSAGE = new JsonBuilder(attachmentPayload).toPrettyString()
+      }
+
+      slackSend (
+        channel: '#builds',
+        attachments: env.MESSAGE
+      )
+
+    }
+  }
+}

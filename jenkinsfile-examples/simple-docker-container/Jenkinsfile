@@ -1,21 +1,22 @@
 pipeline {
   agent {
     node {
-      label 'linux&&docker'
+      label 'linux&&docker' // selecting Jenkins node by labels.
     }
   }
   environment {
-    AUTH = credentials('secrets')
+    AUTH = credentials('secrets') // using Jenkins credential store.
     APPLICATION_NAME = 'awesome-app'
     VERSION = "0.1.0"
-    RT_DOCKER_PROD = 'docker-local-prod'
+    RT_DOCKER_PROD = 'docker-local-prod' // private artifactory repo.
   }
   options {
-    buildDiscarder(logRotator(numToKeepStr: '5'))
+    buildDiscarder(logRotator(numToKeepStr: '5')) // only keep 5 Jenkins builds.
     timeout(time: 1, unit: 'HOURS')
-    timestamps()
+    timestamps() // add timestamp to Jenkins logs.
   }
   stages {
+    // determining which repo to publish to based on branch.
     stage('Prepare Environment') {
       steps {
         script {
@@ -32,11 +33,15 @@ pipeline {
         }
       }
     }
+    // builds the docker container using the versioned tag.
     stage('Build Container') {
       steps {
         sh "docker build --tag ${env.CONTAINER} -f build/Dockerfile ."
       }
     }
+    // only runs when the branch is set to `master`.
+    // logs into the private repo (Artifactory) and
+    // publishes two instances; a versioned container and the `latest` tag.
     stage('Publish Container') {
       when { branch 'master' }
       steps {

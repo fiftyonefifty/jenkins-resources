@@ -2,26 +2,26 @@ pipeline {
   agent {
     docker {
       image 'circleci/node:10.16.0-stretch-browsers'
-      label 'linux-jenkins-node'
-      args '-u root:root'
+      label 'linux&&docker' // selecting Jenkins node by labels.
+      args '-u root:root' // running as root in the container.
     }
   }
   // Global Environment Settings
   environment {
     // Credentials for the private repository.
-    RT_AUTH = credentials('artifactory')
-    // URL for the private artifactory server.
+    RT_AUTH = credentials('artifactory') // using Jenkins credential store.
     RT_URL = 'https://artifactory.com'
     // The CLI prompts the user for input on first-run. This disables that
     // feature for CI pipelines.
     JFROG_CLI_OFFER_CONFIG = false
   }
   options {
-    buildDiscarder(logRotator(numToKeepStr: '5'))
+    buildDiscarder(logRotator(numToKeepStr: '5')) // only keep 5 Jenkins builds.
     timeout(time: 30, unit: 'MINUTES')
-    timestamps()
+    timestamps() // add timestamp to Jenkins logs.
   }
   stages {
+    // determining which repo to publish to based on branch.
     stage('Prepare Environment') {
       steps {
         script {
@@ -54,6 +54,12 @@ pipeline {
         sh 'npm run lib'
       }
     }
+    // In the original pipeline, the `karma-junit-reporter` plugin is used to
+    // generate the report.
+    //
+    // Note: JUnit reports are natively supported by Jenkins and results can
+    // be captured using the `junit` method which is exactly what is
+    // implemented in this sample.
     stage('Unit Test') {
       steps {
         sh 'ng test'
