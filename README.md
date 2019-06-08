@@ -12,7 +12,7 @@ In addition to covering Jenkinsfiles and pipelines, these examples include:
 
 ## Examples
 
-- [Simple Dockerized App](simple-docker-container/README.md)
+- [Simple Dockerized App](jenkinsfile-examples/simple-docker-container/README.md)
 
 ## Other Great Resources
 
