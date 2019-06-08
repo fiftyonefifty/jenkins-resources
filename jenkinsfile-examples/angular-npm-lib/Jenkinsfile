@@ -1,0 +1,95 @@
+pipeline {
+  agent {
+    docker {
+      image 'circleci/node:10.16.0-stretch-browsers'
+      label 'linux-jenkins-node'
+      args '-u root:root'
+    }
+  }
+  // Global Environment Settings
+  environment {
+    // Credentials for the private repository.
+    RT_AUTH = credentials('artifactory')
+    // URL for the private artifactory server.
+    RT_URL = 'https://artifactory.com'
+    // The CLI prompts the user for input on first-run. This disables that
+    // feature for CI pipelines.
+    JFROG_CLI_OFFER_CONFIG = false
+  }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+  }
+  stages {
+    stage('Prepare Environment') {
+      steps {
+        script {
+          if (env.BRANCH_NAME == 'develop') {
+            env.NPM_REPO = "npm-stage-local"
+          }
+          if (env.BRANCH_NAME == 'master') {
+            env.NPM_REPO = "npm-prod-local"
+          }
+        }
+      }
+    }
+    stage('Install Dependencies') {
+      steps {
+        sh 'npm -v'
+        // Fix for permissions issue in Docker.
+        // See https://stackoverflow.com/questions/44633419/no-access-permission-error-with-npm-global-install-on-docker-image
+        sh 'npm -g config set user root'
+        // Installing the JFrog CLI.
+        sh 'npm install -g jfrog-cli-go'
+        // Installing Angular CLI.
+        // Note: it is important to match the global version of the CLI with
+        // your project's version to avoid issues.
+        sh 'npm install -g @angular/cli@7.3.8'
+        sh 'npm install'
+      }
+    }
+    stage('Build Application') {
+      steps {
+        sh 'npm run lib'
+      }
+    }
+    stage('Unit Test') {
+      steps {
+        sh 'ng test'
+      }
+      post {
+        always {
+          junit 'reports/**/*.xml'
+        }
+      }
+    }
+    stage('Publish') {
+      when {
+        expression { env.NPM_REPO != null }
+      }
+      steps {
+        dir('dist/my-lib/') {
+          sh "jfrog rt npmp --url '${env.RT_URL}' --user '${env.RT_AUTH_USR}' --password '${env.RT_AUTH_PSW}' ${env.NPM_REPO}"
+        }
+      }
+    }
+  }
+  post {
+    cleanup {
+      echo 'Cleaning up.'
+      cleanWs()
+      deleteDir()
+    }
+    success {
+      slackSend channel: '#builds',
+        color: 'good',
+        message: "*Build Succeeded* [${env.BUILD_NUMBER}] \n <${env.BUILD_URL}|${env.JOB_NAME}>"
+    }
+    failure {
+      slackSend channel: '#builds',
+        color: 'danger',
+        message: "*Build Failed* - [${env.BUILD_NUMBER}] \n <${env.BUILD_URL}|${env.JOB_NAME}>"
+    }
+  }
+}
